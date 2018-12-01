@@ -13,20 +13,21 @@ description:         Please see the README on GitHub at <https://github.com/hmpc
 
 dependencies:
 - base
+- containers
 
 library:
   source-dirs: src
 
 executables:
-  aoc2018-exe:
-    main:                Main.hs
+  day01-exe:
+    main:                Main01.hs
     source-dirs:         app
     dependencies:
     - aoc2018
 
 tests:
-  aoc2018-test:
-    main:                Spec.hs
+  day01-test:
+    main:                Spec01.hs
     source-dirs:         test
     dependencies:
     - aoc2018
