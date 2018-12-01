@@ -1,0 +1,32 @@
+name:                aoc2018
+version:             0.1.0.0
+github:              "hmpcabral/aoc2018"
+license:             BSD3
+author:              "Henrique Cabral"
+maintainer:          "henriquempcabral@gmail.com"
+copyright:           "2018 Henrique Cabral"
+
+extra-source-files:
+- README.md
+
+description:         Please see the README on GitHub at <https://github.com/hmpcabral/aoc2018#readme>
+
+dependencies:
+- base
+
+library:
+  source-dirs: src
+
+executables:
+  aoc2018-exe:
+    main:                Main.hs
+    source-dirs:         app
+    dependencies:
+    - aoc2018
+
+tests:
+  aoc2018-test:
+    main:                Spec.hs
+    source-dirs:         test
+    dependencies:
+    - aoc2018
