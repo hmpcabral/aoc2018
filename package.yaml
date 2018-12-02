@@ -24,10 +24,16 @@ executables:
     source-dirs:         app01
     dependencies:
     - aoc2018
+  day02-exe:
+    main:                Main.hs
+    source-dirs:         app02
+    dependencies:
+    - aoc2018
 
 tests:
-  day01-test:
-    main:                Spec01.hs
+  aoc2018-test:
+    main:                Spec.hs
     source-dirs:         test
     dependencies:
     - aoc2018
+    - hspec

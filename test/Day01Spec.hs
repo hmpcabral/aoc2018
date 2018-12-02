@@ -1,8 +1,9 @@
-import Test.Hspec
-import Lib
+module Day01Spec (spec) where
 
-main :: IO ()
-main = hspec $ do
+import Test.Hspec
+import Day01
+
+spec = do
   describe "toInts" $ do
     it "empty string" $ do
       toInts "" `shouldBe` []
