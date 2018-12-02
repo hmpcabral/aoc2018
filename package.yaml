@@ -20,8 +20,8 @@ library:
 
 executables:
   day01-exe:
-    main:                Main01.hs
-    source-dirs:         app
+    main:                Main.hs
+    source-dirs:         app01
     dependencies:
     - aoc2018
 
