@@ -29,6 +29,11 @@ executables:
     source-dirs:         app02
     dependencies:
     - aoc2018
+  day03-exe:
+    main:                Main.hs
+    source-dirs:         app03
+    dependencies:
+    - aoc2018
 
 tests:
   aoc2018-test:
@@ -37,3 +42,5 @@ tests:
     dependencies:
     - aoc2018
     - hspec
+    - QuickCheck
+    - array
