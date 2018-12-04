@@ -8,7 +8,9 @@ import Data.List (nub, sortOn, mapAccumL, mapAccumR, maximumBy)
 import Data.Maybe (fromJust)
 import Data.Ord (comparing)
 import Data.Array.Unboxed (UArray, listArray, accum, assocs, elems)
-import qualified Data.Map as M (Map, empty, insertWith, foldrWithKey, keys, (!))
+import Data.Array.ST
+import qualified Data.Map as M (Map, empty, insert, insertWith, foldrWithKey, keys, (!))
+import Control.Monad
 
 data Action = StartShift | FallAsleep | WakeUp
             deriving (Eq, Show)
@@ -60,20 +62,22 @@ readEvents = fillEnds . fillGuards . sortOn getStart . map readEvent
 type PunchedClock = UArray Int Int
 type TimeCard = M.Map Int PunchedClock
 
-punchClock :: PunchedClock -> Event -> PunchedClock
-punchClock clock (Event _ _ start end) = accum (\x _ -> x+1) clock entries
-  where entries = zip [minutes start..minutes end - 1] [1..]
-        minutes = todMin . timeToTimeOfDay . utctDayTime
+guardClock :: [Event] -> Int -> PunchedClock
+guardClock evs guard = runSTUArray $ do
+    clock <- newArray (0, 59) 0
+    forM_ evs $ \(Event g action start end) -> do
+        when (g == Just guard && action == FallAsleep) $ do
+            forM_ [minutes start..minutes end - 1] $ \m -> do
+                count <- readArray clock m
+                writeArray clock m (count + 1)
+    return clock
+  where minutes = todMin . timeToTimeOfDay . utctDayTime
 
-timecardInsert :: Event -> TimeCard -> TimeCard
-timecardInsert ev = M.insertWith joinClocks (fromJust $ getGuard ev) (newClock ev)
-  where joinClocks x y = accum (+) x (assocs y)
-        newClock = punchClock emptyClock
-        emptyClock = listArray (0, 59) (repeat 0)
+allGuards :: [Event] -> [Int]
+allGuards = nub . map (fromJust . getGuard)
 
 timecard :: [Event] -> TimeCard
-timecard = foldr timecardInsert M.empty . sleeps
-  where sleeps = filter ((== FallAsleep) . getAction)
+timecard evs = foldr (\g c -> M.insert g (guardClock evs g) c) M.empty $ allGuards evs
 
 sleepy :: TimeCard -> Int
 sleepy = fst . M.foldrWithKey maxSleep (0, 0)
