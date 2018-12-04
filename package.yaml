@@ -14,6 +14,8 @@ description:         Please see the README on GitHub at <https://github.com/hmpc
 dependencies:
 - base
 - containers
+- array
+- time
 
 library:
   source-dirs: src
@@ -34,6 +36,11 @@ executables:
     source-dirs:         app03
     dependencies:
     - aoc2018
+  day04-exe:
+    main:                Main.hs
+    source-dirs:         app04
+    dependencies:
+    - aoc2018
 
 tests:
   aoc2018-test:
@@ -43,4 +50,3 @@ tests:
     - aoc2018
     - hspec
     - QuickCheck
-    - array
