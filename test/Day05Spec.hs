@@ -35,13 +35,13 @@ spec = do
 
   describe "optimise" $ do
     it "reduces or maintains length of original polymer" $ property $
-      \(TestPolymer p) -> optimise p <= length p
+      \(TestPolymer p) -> length (optimise p) <= length p
 
     it "reduces or maintains length of original reaction" $ property $
-      \(TestPolymer p) -> optimise p <= length (react p)
+      \(TestPolymer p) -> length (optimise p) <= length (react p)
 
     it "reacting beforehand is a no-op" $ property $
       \(TestPolymer p) -> optimise p == optimise (react p)
 
     it "sample case" $ do
-      optimise "dabAcCaCBAcCcaDA" `shouldBe` 4
+      optimise "dabAcCaCBAcCcaDA" `shouldBe` "daDA"

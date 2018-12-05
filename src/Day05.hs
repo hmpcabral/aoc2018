@@ -1,6 +1,8 @@
 module Day05 where
 
 import Data.Char (toUpper, toLower)
+import Data.List (minimumBy)
+import Data.Ord (comparing)
 
 type Polymer = String
 type Unit = Char
@@ -14,6 +16,6 @@ react pol = if length rpol == length pol then rpol else react rpol
         react' u (x:xs) = if u `opposite` x then xs else (u:x:xs)
         react' u [] = [u]
 
-optimise :: Polymer -> Int
-optimise pol = minimum . map (length . react) $ map remove ['a'..'z']
+optimise :: Polymer -> Polymer
+optimise pol = minimumBy (comparing length) $ map (react . remove) ['a'..'z']
   where remove u = filter (`notElem` [u, toUpper u]) pol

@@ -9,4 +9,5 @@ main = do
          let polymer = filter (not . isSpace) input
          let reacted = react polymer
          putStrLn $ "Length of reacted polymer: " ++ show (length reacted)
-         putStrLn $ "Length of optimised polymer: " ++ show (optimise reacted)
+         let optimised = optimise reacted
+         putStrLn $ "Length of optimised polymer: " ++ show (length optimised)
