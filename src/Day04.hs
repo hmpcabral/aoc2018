@@ -7,7 +7,8 @@ import Data.Char (isDigit)
 import Data.List (nub, sortOn, mapAccumL, mapAccumR, maximumBy)
 import Data.Maybe (fromJust)
 import Data.Ord (comparing)
-import Data.Array.Unboxed (UArray, listArray, accum, assocs)
+import Data.Array.Unboxed (UArray, listArray, accum, assocs, elems)
+import qualified Data.Map as M (Map, empty, insertWith, foldrWithKey, keys, (!))
 
 data Action = StartShift | FallAsleep | WakeUp
             deriving (Eq, Show)
@@ -36,8 +37,8 @@ eventP = do
   where fallAsleepP = string "falls asleep" >> return (FallAsleep, Nothing)
         wakeUpP     = string "wakes up" >> return (WakeUp, Nothing)
         startShiftP = do
-                        guard <- between (string "Guard #") (string " begins shift") number
-                        return (StartShift, Just guard)
+          guard <- between (string "Guard #") (string " begins shift") number
+          return (StartShift, Just guard)
 
 readEvent :: String -> Event
 readEvent str = let ((event, _):_) = readP_to_S eventP str in event
@@ -56,35 +57,33 @@ readEvents = fillEnds . fillGuards . sortOn getStart . map readEvent
 --
 -- Solve
 --
-sliceGuard :: [Event] -> Action -> Int -> [Event]
-sliceGuard evs action guard = filter (\e -> fg e && fa e) evs
-  where fg e = (getGuard e) == Just guard
-        fa e = (getAction e )== action
+type PunchedClock = UArray Int Int
+type TimeCard = M.Map Int PunchedClock
 
-totalSleep :: [Event] -> Int -> NominalDiffTime
-totalSleep evs = sum . map td . sliceGuard evs FallAsleep
-  where td x = diffUTCTime (getEnd x) (getStart x)
+punchClock :: PunchedClock -> Event -> PunchedClock
+punchClock clock (Event _ _ start end) = accum (\x _ -> x+1) clock entries
+  where entries = zip [minutes start..minutes end - 1] [1..]
+        minutes = todMin . timeToTimeOfDay . utctDayTime
 
-allGuards :: [Event] -> [Int]
-allGuards = nub . map (fromJust . getGuard)
+timecardInsert :: Event -> TimeCard -> TimeCard
+timecardInsert ev = M.insertWith joinClocks (fromJust $ getGuard ev) (newClock ev)
+  where joinClocks x y = accum (+) x (assocs y)
+        newClock = punchClock emptyClock
+        emptyClock = listArray (0, 59) (repeat 0)
 
-sleepy :: [Event] -> Int
-sleepy evs = snd . maximumBy cmpDuration $ zip (map (totalSleep evs) guards) guards
-  where guards = allGuards evs
-        cmpDuration x y = compare (fst x) (fst y)
+timecard :: [Event] -> TimeCard
+timecard = foldr timecardInsert M.empty . sleeps
+  where sleeps = filter ((== FallAsleep) . getAction)
 
-timeCard :: [Event] -> UArray Int Int
-timeCard = foldr acc empty
-  where start = todMin . timeToTimeOfDay . utctDayTime . getStart
-        end = todMin . timeToTimeOfDay . utctDayTime . getEnd
-        empty = listArray (0, 59) (repeat 0)
-        acc ev card = accum (+) card (zip [start ev..end ev - 1] (repeat 1))
+sleepy :: TimeCard -> Int
+sleepy = fst . M.foldrWithKey maxSleep (0, 0)
+  where maxSleep guard clock cur@(maxGuard, maxTime) =
+          let sleep = sum $ elems clock in if sleep > maxTime then (guard, sleep) else cur
 
-napTime :: [Event] -> Int -> (Int, Int)
-napTime evs guard = maximumBy (comparing snd) . assocs . timeCard $ sliceGuard evs FallAsleep guard
+napTime :: TimeCard -> Int -> (Int, Int)
+napTime card = maximumBy (comparing snd) . assocs . (card M.!)
 
-sleepiestTime :: [Event] -> (Int, Int, Int)
-sleepiestTime evs = maximumBy cmpThird . zipWith consTuple guards $ map (napTime evs) guards
-  where guards = allGuards evs
-        cmpThird (_, _, x) (_, _, y) = compare x y
-        consTuple x (y, z) = (x, y, z)
+sleepiestTime :: TimeCard -> (Int, Int, Int)
+sleepiestTime card = maximumBy (comparing (\(g, m, c) -> c)) naps
+  where naps = map (\g -> let (m, c) = napTime card g in (g, m, c)) guards
+        guards = M.keys card
