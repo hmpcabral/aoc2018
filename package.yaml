@@ -46,6 +46,11 @@ executables:
     source-dirs:         app05
     dependencies:
     - aoc2018
+  day06-exe:
+    main:                Main.hs
+    source-dirs:         app06
+    dependencies:
+    - aoc2018
 
 tests:
   aoc2018-test:
