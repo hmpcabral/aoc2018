@@ -56,6 +56,11 @@ executables:
     source-dirs:         app07
     dependencies:
     - aoc2018
+  day08-exe:
+    main:                Main.hs
+    source-dirs:         app08
+    dependencies:
+    - aoc2018
 
 tests:
   aoc2018-test:
