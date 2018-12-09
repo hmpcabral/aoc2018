@@ -16,6 +16,8 @@ dependencies:
 - containers
 - array
 - time
+- pointedlist
+- vector
 
 library:
   source-dirs: src
@@ -59,6 +61,11 @@ executables:
   day08-exe:
     main:                Main.hs
     source-dirs:         app08
+    dependencies:
+    - aoc2018
+  day09-exe:
+    main:                Main.hs
+    source-dirs:         app09
     dependencies:
     - aoc2018
 
