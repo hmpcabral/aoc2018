@@ -1,93 +1,58 @@
 module Day04 where
 
-import Text.ParserCombinators.ReadP
-import Data.Time
-import Data.Time.Format (readPTime)
-import Data.Char (isDigit)
-import Data.List (nub, sortOn, mapAccumL, mapAccumR, maximumBy)
-import Data.Maybe (fromJust)
+import Data.Text (pack, unpack, split)
+import Data.List (foldl', sort, maximumBy)
 import Data.Ord (comparing)
-import Data.Array.Unboxed (UArray, listArray, accum, assocs, elems)
-import Data.Array.ST
-import qualified Data.Map as M (Map, empty, insert, insertWith, foldrWithKey, keys, (!))
-import Control.Monad
+import Data.IntMap.Strict (IntMap)
+import qualified Data.IntMap.Strict as IM
+import Data.Vector.Unboxed (Vector)
+import qualified Data.Vector.Unboxed as V
 
-data Action = StartShift | FallAsleep | WakeUp
+data TimeStamp = TimeStamp { year :: Int
+                           , month :: Int
+                           , day :: Int
+                           , hour :: Int
+                           , minute :: Int }
+               deriving (Eq, Show)
+
+data Action = StartShift Int
+            | FallAsleep TimeStamp
+            | WakeUp TimeStamp
             deriving (Eq, Show)
 
-data Event = Event { getGuard :: Maybe Int
-                   , getAction :: Action
-                   , getStart :: UTCTime
-                   , getEnd :: UTCTime }
-           deriving (Eq, Show)
-
---
 -- Parsing
---
-number :: ReadP Int
-number = fmap read $ many1 (satisfy isDigit)
+parseAction :: String -> Action
+parseAction str = action
+  where (timestamp, (a:g:_)) = splitAt 5 $ components str
+        [year, mon, day, h, m] = map read timestamp
+        ts = TimeStamp year mon day h m
+        action = case a of
+                     "Guard" -> StartShift (read g)
+                     "falls" -> FallAsleep ts
+                     "wakes" -> WakeUp ts
 
-timeP :: ReadP UTCTime
-timeP = readPTime False defaultTimeLocale "%Y-%-m-%-d %H:%M"
+        components = filter (not . null) . map unpack . split noise . pack
+        noise = (`elem` "[-:]# ")
 
-eventP :: ReadP Event
-eventP = do
-    time <- between (char '[') (char ']') timeP
-    skipSpaces
-    (action, guard) <- choice [fallAsleepP, wakeUpP, startShiftP]
-    return (Event guard action time undefined)
-  where fallAsleepP = string "falls asleep" >> return (FallAsleep, Nothing)
-        wakeUpP     = string "wakes up" >> return (WakeUp, Nothing)
-        startShiftP = do
-          guard <- between (string "Guard #") (string " begins shift") number
-          return (StartShift, Just guard)
+readEvents :: [String] -> IntMap (Vector Int)
+readEvents ls = card
+  where (card, _, _) = foldl' event (IM.empty, Nothing, Nothing) $ readActions ls
 
-readEvent :: String -> Event
-readEvent str = let ((event, _):_) = readP_to_S eventP str in event
+        readActions = map parseAction . sort
 
-readEvents :: [String] -> [Event]
-readEvents = fillEnds . fillGuards . sortOn getStart . map readEvent
-  where fillGuards = snd . mapAccumL fillGuard Nothing
-        fillGuard last e@(Event g _ _ _) = case g of
-                                             Nothing -> (last, e {getGuard = last})
-                                             _       -> (g, e)
+        event (c,      _,          _) (StartShift g')  = (c,  Just g', Nothing)
+        event (c,      g,          _) (FallAsleep ts)  = (c,       g,  Just ts)
+        event (c, Just g, Just start) (WakeUp     end) = (c', Just g,  Nothing)
+          where c' = IM.insertWith (V.zipWith (+)) g ms c
+                ms = fill (V.replicate 60 0) (minute start) (minute end - 1)
+                fill v from to = v V.// [(i, 1) | i <- [from..to]]
 
-        fillEnds xs = snd $ mapAccumR fillEnd (last xs) (init xs)
-        fillEnd next@(Event _ _ s _) prev = (f, f)
-          where f = prev {getEnd = s}
+-- Part 1
+part1 :: IntMap (Vector Int) -> (Int, Int)
+part1 card = (g, V.maxIndex ts)
+  where (g, ts) = maximumBy (comparing (sum . V.toList . snd)) $ IM.assocs card
 
---
--- Solve
---
-type PunchedClock = UArray Int Int
-type TimeCard = M.Map Int PunchedClock
-
-guardClock :: [Event] -> Int -> PunchedClock
-guardClock evs guard = runSTUArray $ do
-    clock <- newArray (0, 59) 0
-    forM_ evs $ \(Event g action start end) -> do
-        when (g == Just guard && action == FallAsleep) $ do
-            forM_ [minutes start..minutes end - 1] $ \m -> do
-                count <- readArray clock m
-                writeArray clock m (count + 1)
-    return clock
-  where minutes = todMin . timeToTimeOfDay . utctDayTime
-
-allGuards :: [Event] -> [Int]
-allGuards = nub . map (fromJust . getGuard)
-
-timecard :: [Event] -> TimeCard
-timecard evs = foldr (\g c -> M.insert g (guardClock evs g) c) M.empty $ allGuards evs
-
-sleepy :: TimeCard -> Int
-sleepy = fst . M.foldrWithKey maxSleep (0, 0)
-  where maxSleep guard clock cur@(maxGuard, maxTime) =
-          let sleep = sum $ elems clock in if sleep > maxTime then (guard, sleep) else cur
-
-napTime :: TimeCard -> Int -> (Int, Int)
-napTime card = maximumBy (comparing snd) . assocs . (card M.!)
-
-sleepiestTime :: TimeCard -> (Int, Int, Int)
-sleepiestTime card = maximumBy (comparing (\(g, m, c) -> c)) naps
-  where naps = map (\g -> let (m, c) = napTime card g in (g, m, c)) guards
-        guards = M.keys card
+-- Part 2
+part2 :: IntMap (Vector Int) -> (Int, Int)
+part2 card = (g, V.maxIndex ts)
+   where (g, ts) = maximumBy (comparing (V.maximum . snd)) $ IM.assocs card
