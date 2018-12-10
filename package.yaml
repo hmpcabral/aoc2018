@@ -18,6 +18,7 @@ dependencies:
 - time
 - pointedlist
 - vector
+- text
 
 library:
   source-dirs: src
@@ -66,6 +67,11 @@ executables:
   day09-exe:
     main:                Main.hs
     source-dirs:         app09
+    dependencies:
+    - aoc2018
+  day10-exe:
+    main:                Main.hs
+    source-dirs:         app10
     dependencies:
     - aoc2018
 
