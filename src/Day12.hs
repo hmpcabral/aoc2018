@@ -3,11 +3,9 @@ module Day12 (parseInput, aliveAt) where
 import Data.List ((!!), elemIndex)
 import Data.Array.Unboxed (UArray)
 import qualified Data.Array.Unboxed as U
-import Data.Array.ST
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Control.Arrow ((&&&))
-import Control.Monad (forM_)
 
 type Pot = Bool
 type Garden = UArray Int Pot
@@ -35,13 +33,13 @@ parseInput str = (readRules xs, readState x)
 
 -- Solving
 nextGen :: Rules -> Garden -> Garden
-nextGen rules garden = runSTUArray $ do
-    garden' <- newArray (left - 5, right + 5) False
-    forM_ (U.range (left - 2, right + 2)) $ \pos -> do
-        writeArray garden' pos $ newPot pos
-    return garden'
-  where (left, right) = (head &&& last) . filter (garden U.!) $ U.indices garden
-        newPot pos = (rules M.!) $ map ((garden U.!) . (pos+)) [-2..2]
+nextGen rs g = U.listArray bs . map newPot $ U.range bs
+  where (left, right) = (head &&& last) . filter (g U.!) $ U.indices g
+        bs = (left - 4, right + 4)
+        newPot pos
+          | all (U.inRange $ U.bounds g) ctx = (rs M.!) $ map (g U.!) ctx
+          | otherwise = False
+          where ctx = [pos-2..pos+2]
 
 generations :: Rules -> Garden -> [Garden]
 generations rules = iterate (nextGen rules)
