@@ -5,15 +5,10 @@ import Data.List (foldl', tails)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Linear (V2(..))
+import Linear.Matrix (identity, transpose, (!*))
 
-data Direction = Up | Down | DLeft | DRight
-               deriving (Eq, Show)
-
-data Turn = Straight | TLeft | TRight
-          deriving (Eq, Show)
-
-data Cart = Cart { heading :: Direction
-                 , nextTurn :: Turn }
+data Cart = Cart { heading :: V2 Int
+                 , nextTurn :: V2 (V2 Int) }
           | Collision
           deriving (Eq, Show)
 
@@ -21,43 +16,40 @@ type Tracks = Map (V2 Int) (Cart -> Cart)
 type Positions = Map (V2 Int) Cart
 
 -- Movement
-move :: Direction -> V2 Int -> V2 Int
-move Up     = (+ V2 (-1)  0)
-move Down   = (+ V2   1   0)
-move DLeft  = (+ V2   0 (-1))
-move DRight = (+ V2   0   1)
+up    = V2 (-1)  0
+down  = V2   1   0
+left  = V2   0 (-1)
+right = V2   0   1
 
-turn :: Turn -> Direction -> Direction
-turn Straight d      = d
-turn TRight   DLeft  = Up
-turn TLeft    DRight = Up
-turn TLeft    DLeft  = Down
-turn TRight   DRight = Down
-turn TLeft    Up     = DLeft
-turn TRight   Down   = DLeft
-turn TRight   Up     = DRight
-turn TLeft    Down   = DRight
+straight :: V2 (V2 Int)
+straight = identity
 
-fwdTurn :: Turn -> Turn
-fwdTurn Straight = TRight
-fwdTurn TRight   = TLeft
-fwdTurn TLeft    = Straight
+turnLeft = V2 (V2 0 (-1)) (V2 1 0)
+turnRight = transpose turnLeft
+
+fwdTurn :: V2 (V2 Int) -> V2 (V2 Int)
+fwdTurn t
+  | t == straight  = turnRight
+  | t == turnRight = turnLeft
+  | t == turnLeft  = straight
 
 -- Pieces of track
 cornerNWtoSE :: Cart -> Cart
-cornerNWtoSE (Cart Up     nt) = Cart DRight nt
-cornerNWtoSE (Cart DLeft  nt) = Cart Down nt
-cornerNWtoSE (Cart Down   nt) = Cart DLeft nt
-cornerNWtoSE (Cart DRight nt) = Cart Up nt
+cornerNWtoSE (Cart d nt)
+  | d == up    = Cart right nt
+  | d == left  = Cart down nt
+  | d == down  = Cart left nt
+  | d == right = Cart up nt
 
 cornerNEtoSW :: Cart -> Cart
-cornerNEtoSW (Cart Up     nt) = Cart DLeft nt
-cornerNEtoSW (Cart DLeft  nt) = Cart Up nt
-cornerNEtoSW (Cart Down   nt) = Cart DRight nt
-cornerNEtoSW (Cart DRight nt) = Cart Down nt
+cornerNEtoSW (Cart d nt)
+  | d == up    = Cart left nt
+  | d == left  = Cart up nt
+  | d == down  = Cart right nt
+  | d == right = Cart down nt
 
 intersection :: Cart -> Cart
-intersection (Cart h nt) = Cart (nt `turn` h) (fwdTurn nt)
+intersection (Cart h nt) = Cart (nt !* h) (fwdTurn nt)
 
 -- Parsing
 parseLine :: Int -> String -> (Tracks, Positions)
@@ -67,7 +59,7 @@ parseLine y l = (tracks, carts)
           where (ts', ps') = parse p ts ps xs
 
         parse p ts ps (x:_)
-          | isJust d = (ts, M.insert p (Cart (fromJust d) TLeft) ps)
+          | isJust d = (ts, M.insert p (Cart (fromJust d) turnLeft) ps)
           | isJust t = (M.insert p (fromJust t) ts, ps)
           where d = direction x
                 t = track x
@@ -78,10 +70,10 @@ parseLine y l = (tracks, carts)
         track '+'  = Just intersection
         track _    = Nothing
 
-        direction '>' = Just DRight
-        direction '<' = Just DLeft
-        direction 'v' = Just Down
-        direction '^' = Just Up
+        direction '>' = Just right
+        direction '<' = Just left
+        direction 'v' = Just down
+        direction '^' = Just up
         direction _   = Nothing
 
 parseInput :: [String] -> (Tracks, Positions)
@@ -93,7 +85,7 @@ tick :: Tracks -> Positions -> Positions
 tick tracks carts = M.foldlWithKey' acc M.empty carts
   where acc carts' p c = M.insertWith (\_ _ -> Collision) p' c' carts'
           where p' | p `M.member` carts' = p
-                   | otherwise           = move (heading c) p
+                   | otherwise           = p + heading c
                 c' | p' `M.member` carts = Collision
                    | otherwise           = M.findWithDefault id p' tracks $ c
 
