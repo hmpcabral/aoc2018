@@ -19,6 +19,7 @@ dependencies:
 - pointedlist
 - vector
 - text
+- linear
 
 library:
   source-dirs: src
@@ -82,6 +83,11 @@ executables:
   day12-exe:
     main:                Main.hs
     source-dirs:         app12
+    dependencies:
+    - aoc2018
+  day13-exe:
+    main:                Main.hs
+    source-dirs:         app13
     dependencies:
     - aoc2018
 
