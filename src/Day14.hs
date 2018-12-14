@@ -1,6 +1,6 @@
 module Day14 (part1, part2) where
 
-import Data.List (iterate')
+import Data.List (tails, isPrefixOf)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IM
 
@@ -11,12 +11,7 @@ data Recipes = Recipes { getScores :: IntMap Score
                        , getLength :: Int }
              deriving (Show)
 
-initial :: Recipes
-initial = Recipes { getScores = IM.fromList [(0, 3), (1, 7)]
-                  , getFocus = (0, 1)
-                  , getLength = 2 }
-
-update :: Recipes -> ([Int], Recipes)
+update :: Recipes -> ([Score], Recipes)
 update (Recipes scores (x, y) n) = (ns, Recipes scores' (x', y') n')
   where scores' = foldr (\(i, s) m -> IM.insert i s m) scores $ zip [n..] ns
         n' = n + length ns
@@ -27,21 +22,12 @@ update (Recipes scores (x, y) n) = (ns, Recipes scores' (x', y') n')
 
         advance p d = (p + d + 1) `mod` n'
 
-part1 :: Int -> [Int]
-part1 n = map (getScores rs IM.!) [n..n+9]
-  where rs = until ((>= n + 10) . getLength) (snd . update) initial
+stream :: [Score]
+stream = 3 : 7 : go (Recipes (IM.fromList [(0,3), (1,7)]) (0,1) 2)
+  where go r = let (new, r') = update r in new ++ go r'
 
-part2 :: [Int] -> Int
-part2 needle = go needle needle $ iterate' (update . snd) ([], initial)
+part1 :: Int -> [Score]
+part1 n = take 10 $ drop n stream
 
-go :: Eq a => [a] -> [a] -> [([a], Recipes)] -> Int
-go needle missing ((ns, rs):xs)
-  | null ns       = go needle needle xs
-  | null missing' = getLength rs - length needle - length ns + length missing
-  | otherwise     = go needle missing' xs'
-  where (missing', xs') = case (missing `starts` ns, needle `starts` ns) of
-                              (False, False) -> (needle, ((drop 1 ns, rs):xs))
-                              (True,  _)     -> (drop (length ns) missing, xs)
-                              (_,     True)  -> (drop (length ns) needle, xs)
-
-        x `starts` y = take (length y) x == take (length x) y
+part2 :: [Score] -> Int
+part2 needle = length . takeWhile (not . isPrefixOf needle) $ tails stream
