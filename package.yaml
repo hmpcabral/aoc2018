@@ -90,6 +90,11 @@ executables:
     source-dirs:         app13
     dependencies:
     - aoc2018
+  day14-exe:
+    main:                Main.hs
+    source-dirs:         app14
+    dependencies:
+    - aoc2018
 
 tests:
   aoc2018-test:
