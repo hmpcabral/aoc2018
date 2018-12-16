@@ -20,6 +20,7 @@ dependencies:
 - vector
 - text
 - linear
+- fgl
 
 library:
   source-dirs: src
@@ -93,6 +94,11 @@ executables:
   day14-exe:
     main:                Main.hs
     source-dirs:         app14
+    dependencies:
+    - aoc2018
+  day15-exe:
+    main:                Main.hs
+    source-dirs:         app15
     dependencies:
     - aoc2018
   day16-exe:
